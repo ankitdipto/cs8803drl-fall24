@@ -123,7 +123,7 @@ def plot_returns(
     plt.tight_layout()
     plt.show()
 
-    plt.pause(0.001)  # pause a bit so that plots are updated
+    plt.pause(0.01)  # pause a bit so that plots are updated
     display.display(plt.gcf())
     if dynamic:
         display.clear_output(wait=True)        

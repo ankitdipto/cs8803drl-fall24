@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from torch import nn
-import torch.functional as F
+import torch.nn.functional as F
 from typing import Tuple, Optional
 from torch.distributions.categorical import Categorical
 
@@ -29,7 +29,20 @@ def network(
     Returns:
         nn.Module: The constructed neural network model.
     """
-    pass
+    class ShallowNet(nn.Module):
+        def __init__(self):
+            super(ShallowNet, self).__init__()
+            self.fc1 = nn.Linear(in_dimension, hidden_dimension)
+            self.fc2 = nn.Linear(hidden_dimension, out_dimension)
+
+        def forward(self, x):
+            x = F.relu(self.fc1(x))
+            logits = self.fc2(x)
+            return logits
+        
+    net = ShallowNet()
+    return net
+    #pass
 
 
 class Policy(nn.Module):
@@ -57,7 +70,9 @@ class Policy(nn.Module):
         TODO: Implement the forward method to compute the network output for the given state.
         You can use the self.network to forward the input.
         """
-        pass
+        state = tensor(state)
+        return self.network(state)
+        # pass
 
     def pi(self, state: np.ndarray) -> Categorical:
         """
@@ -71,7 +86,9 @@ class Policy(nn.Module):
 
         TODO: Implement the pi method to create a Categorical distribution based on the network's output.
         """
-        pass
+        action_logits = self.forward(state)
+        return Categorical(logits = action_logits)
+        # pass
 
     def sample(self, state: np.ndarray) -> Tuple[int, torch.Tensor]:
         """
@@ -85,7 +102,11 @@ class Policy(nn.Module):
 
         TODO: Implement the sample method to sample an action and compute its log probability.
         """
-        pass
+        PI = self.pi(state)
+        action = PI.sample()
+        log_prob_of_action = PI.log_prob(action)
+        return action.item(), log_prob_of_action
+        #pass
 
     def sample_multiple(self, states: np.ndarray) -> Tuple[int, torch.Tensor]:
         """
@@ -99,7 +120,13 @@ class Policy(nn.Module):
 
         TODO: Implement the sample_multiple method to handle multiple states.
         """
-        pass
+        action_logits = self.forward(states)
+        distribution = Categorical(logits = action_logits)
+        actions = distribution.sample()
+        log_probs = distribution.log_prob(actions)
+        assert actions.shape == log_probs.shape
+        return actions, log_probs
+        # pass
 
     def action(self, state: np.ndarray) -> torch.Tensor:
         """
@@ -113,7 +140,10 @@ class Policy(nn.Module):
 
         TODO: Implement the action method to return an action based on the sampled action.
         """
-        pass
+        PI = self.pi(state)
+        action = PI.sample()
+        #pass
+        return action.item()
 
 
 class ValueFunctionQ(nn.Module):
@@ -144,7 +174,10 @@ class ValueFunctionQ(nn.Module):
         TODO: Implement the __call__ method to return Q-values for the given state and action.
         This method is intended to compute Q(s, a).
         """
-        pass
+        Q_sa = self.forward(state)
+        if action is not None:
+            Q_sa = Q_sa[action]
+        return Q_sa
 
     def forward(self, state: np.ndarray) -> torch.Tensor:
         """
@@ -159,7 +192,9 @@ class ValueFunctionQ(nn.Module):
         TODO: Implement the forward method to compute Q-values for the given state.
         You can use the self.network to forward the input.
         """
-        pass
+        state = tensor(state)
+        return self.network(state)
+        # pass
 
     def greedy(self, state: np.ndarray) -> torch.Tensor:
         """
@@ -174,7 +209,10 @@ class ValueFunctionQ(nn.Module):
         TODO: Implement the greedy method to select the best action based on Q-values.
         This method is intended for greedy sampling.
         """
-        pass
+        # pass
+        q_values = self.forward(state)
+        gr_action = torch.argmax(q_values, dim = 0).cpu()
+        return gr_action
 
     def action(self, state: np.ndarray) -> torch.Tensor:
         """
@@ -188,7 +226,8 @@ class ValueFunctionQ(nn.Module):
 
         TODO: Implement the action method to return the greedy action.
         """
-        pass
+        # pass
+        return self.greedy(state).item()
 
     def V(self, state: np.ndarray, policy: Policy) -> float:
         """
@@ -204,4 +243,19 @@ class ValueFunctionQ(nn.Module):
         TODO: Implement the V method to compute the expected value of the state under the policy.
         This method is intended to return V(s).
         """
-        pass
+        action = policy(state)
+        return self.__call__(state, action)
+        #pass
+
+    def V(self, state: np.ndarray) -> float:
+        """
+        Computes the expected value V(s) of the state for this Value function.
+
+        Args:
+            state (np.ndarray): The input state
+        
+        Returns:
+            float: The expected value.
+        """
+        logits = self.forward(state)
+        return logits.mean()
